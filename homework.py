@@ -63,7 +63,7 @@ def get_api_answer(timestamp):
         response = requests.get(
             ENDPOINT,
             headers=HEADERS,
-            params={'timestamp': timestamp}
+            params={'timestamp': timestamp, 'from_date': 0}
         )
         if response.status_code != 200:
             raise APIError(f'Неправильный статус: {response.status_code}')

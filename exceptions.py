@@ -20,11 +20,3 @@ class SendMessageError(Exception):
     def __str__(self) -> str:
         """Переопределение."""
         return 'Ошибка при отправке сообщения'
-
-
-class TokenError(Exception):
-    """Ошибка токена."""
-
-    def __str__(self) -> str:
-        """Переопределение."""
-        return 'Не найден какой-то токен.'
