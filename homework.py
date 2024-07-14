@@ -93,18 +93,10 @@ def check_response(response):
 def parse_status(homework):
     """Проверка статуса проверки работы."""
     logging.debug('Начало првоерки статуса работы.')
-    assert 'homework_name' in homework
     if 'homework_name' not in homework:
         raise KeyError('Некорректный ответ: отсутствует ключ "homework_name"')
     homework_name = homework.get('homework_name')
-    assert 'status' in homework
     if 'status' not in homework:
-        # Я не совсем понял, поэтому оставил проверку через
-        # assert(но в нём тогда надо указать еще ошибку, на сколько я помню)
-        # и через if,
-        # в прошом ревью у меня была проверка просто через if для 'name',
-        # но ты ответил, что я не сделал проверку для обоих ключей,
-        # может имел в виду только для 'status'
         raise KeyError('Некорректный ответ: отсутствует ключ "status"')
     homework_status = homework.get('status')
     if homework_status not in HOMEWORK_VERDICTS:
@@ -119,7 +111,7 @@ def main():
     check_tokens()
     bot = TeleBot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
-    last_error_message = ""
+    last_error_message = ''
     while True:
         try:
             response = get_api_answer(timestamp)
@@ -128,16 +120,12 @@ def main():
                 homework = homeworks[0]
                 message = parse_status(homework)
                 send_message(bot, message)
-                last_error_message = ""
+                last_error_message = ''
             else:
                 logging.debug('В ответе нет новых статусов.')
             timestamp = response.get('current_date', int(time.time()))
-        except SendMessageError as send_error:
-            message = f'Сбой в работе программы: {send_error}'
-            if send_error != last_error_message:
-                with suppress(SendMessageError):
-                    send_message(bot, message)
-                last_error_message = message
+        except SendMessageError:
+            pass
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logging.error(error)
