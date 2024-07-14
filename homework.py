@@ -66,14 +66,10 @@ def get_api_answer(timestamp):
         )
         logging.debug('API успешно получен.')
     except RequestException as error:
-        error_message = f'Ошибка при запросе к основному API: {error}'
-        logging.error(error_message)
-        raise APIError(error)
+        raise APIError(f'Ошибка при запросе к основному API: {error}')
     if response.status_code != HTTPStatus.OK:
-        error_message = (f'Неправильный статус: {response.status_code} '
-                         f'{response.reason}')
-        logging.error(error_message)
-        raise APIError(error_message)
+        raise APIError(f'Неправильный статус: {response.status_code} '
+                       f'{response.reason}')
     return response.json()
 
 
@@ -81,21 +77,15 @@ def check_response(response):
     """Проверка корректности ответа от API."""
     logging.debug('Начало проверки ответа от API')
     if not isinstance(response, dict):
-        error_message = (f'Ответ API должен быть словарем, '
-                         f'а пришел {type(response)}')
-        logging.error(error_message)
-        raise TypeError(error_message)
+        raise TypeError(f'Ответ API должен быть словарем, '
+                        f'а пришел {type(response)}')
 
     if 'homeworks' not in response:
-        error_message = 'В ответе API отсутствует ключ "homeworks"'
-        logging.error(error_message)
-        raise KeyError(error_message)
+        raise KeyError('В ответе API отсутствует ключ "homeworks"')
 
     if not isinstance(response['homeworks'], list):
-        error_message = (f'Ключ "homeworks" должен содержать список '
-                         f'а содержит {type(response["homeworks"])}')
-        logging.error(error_message)
-        raise TypeError(error_message)
+        raise TypeError(f'Ключ "homeworks" должен содержать список '
+                        f'а содержит {type(response["homeworks"])}')
     logging.debug('Завершение проверки ответа от API')
     return response['homeworks']
 
@@ -103,16 +93,22 @@ def check_response(response):
 def parse_status(homework):
     """Проверка статуса проверки работы."""
     logging.debug('Начало првоерки статуса работы.')
+    assert 'homework_name' in homework
     if 'homework_name' not in homework:
-        error_message = 'Некорректный ответ: отсутствует ключ "homework_name"'
-        logging.error(error_message)
-        raise KeyError(error_message)
+        raise KeyError('Некорректный ответ: отсутствует ключ "homework_name"')
     homework_name = homework.get('homework_name')
+    assert 'status' in homework
+    if 'status' not in homework:
+        # Я не совсем понял, поэтому оставил проверку через
+        # assert(но в нём тогда надо указать еще ошибку, на сколько я помню)
+        # и через if,
+        # в прошом ревью у меня была проверка просто через if для 'name',
+        # но ты ответил, что я не сделал проверку для обоих ключей,
+        # может имел в виду только для 'status'
+        raise KeyError('Некорректный ответ: отсутствует ключ "status"')
     homework_status = homework.get('status')
     if homework_status not in HOMEWORK_VERDICTS:
-        error_message = f'Неизвестный статус проверки: {homework_status}'
-        logging.error(error_message)
-        raise StatusError(error_message)
+        raise StatusError(f'Неизвестный статус проверки: {homework_status}')
     verdict = HOMEWORK_VERDICTS[homework_status]
     logging.debug('Проверка статуса работы завершена успешно.')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
@@ -124,7 +120,6 @@ def main():
     bot = TeleBot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
     last_error_message = ""
-
     while True:
         try:
             response = get_api_answer(timestamp)
@@ -133,13 +128,20 @@ def main():
                 homework = homeworks[0]
                 message = parse_status(homework)
                 send_message(bot, message)
+                last_error_message = ""
             else:
                 logging.debug('В ответе нет новых статусов.')
             timestamp = response.get('current_date', int(time.time()))
+        except SendMessageError as send_error:
+            message = f'Сбой в работе программы: {send_error}'
+            if send_error != last_error_message:
+                with suppress(SendMessageError):
+                    send_message(bot, message)
+                last_error_message = message
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            logging.error(message)
-            if message != last_error_message:
+            logging.error(error)
+            if error != last_error_message:
                 with suppress(SendMessageError):
                     send_message(bot, message)
                 last_error_message = message
